@@ -28,6 +28,8 @@ set(SOURCES "audio/audio_codec.cc"
             "protocols/protocol.cc"
             "protocols/mqtt_protocol.cc"
             "protocols/websocket_protocol.cc"
+            "led_effects.cc"
+            "scene_mapping.cc"
             "mcp_server.cc"
             "system_info.cc"
             "application.cc"
@@ -35,7 +37,8 @@ set(SOURCES "audio/audio_codec.cc"
             "settings.cc"
             "device_state_machine.cc"
             "assets.cc"
-            "main.cc"
+            "main.cc"            
+            "hw_smoke_test.cc"
             )
 
 set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg" "audio" "protocols")

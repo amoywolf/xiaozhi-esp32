@@ -9,6 +9,8 @@
 #include "mcp_server.h"
 #include "assets.h"
 #include "settings.h"
+#include "led_effects.h"
+#include "scene_mapping.h"
 
 #include <cstring>
 #include <esp_log.h>
@@ -547,8 +549,12 @@ void Application::InitializeProtocol() {
             auto text = cJSON_GetObjectItem(root, "text");
             if (cJSON_IsString(text)) {
                 ESP_LOGI(TAG, ">> %s", text->valuestring);
-                Schedule([this, display, message = std::string(text->valuestring)]() {
+                auto scene = map_scene_from_text(text->valuestring);
+                ESP_LOGI(TAG, "Scene mapped: %d", static_cast<int>(scene));
+                led_effects_set_scene(scene);
+                Schedule([this, display, message = std::string(text->valuestring), scene]() {
                     display->SetChatMessage("user", message.c_str());
+                    display->SetChatMessage("system", scene_name(scene));
                 });
             }
         } else if (strcmp(type->valuestring, "llm") == 0) {
