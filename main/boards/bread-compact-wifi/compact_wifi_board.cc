@@ -7,6 +7,7 @@
 #include "config.h"
 #include "mcp_server.h"
 #include "lamp_controller.h"
+#include "led_effects.h"
 #include "led/single_led.h"
 #include "assets/lang_config.h"
 
@@ -150,6 +151,70 @@ private:
     // 物联网初始化，逐步迁移到 MCP 协议
     void InitializeTools() {
         static LampController lamp(LAMP_GPIO);
+        auto& mcp_server = McpServer::GetInstance();
+        mcp_server.AddTool(
+            "self.led_scene.set",
+            "Set LED scene. scene = off|party|romantic|relax. brightness=-1 keep, 0-8. speed=-1 keep, 1-10.",
+            PropertyList({
+                Property("scene", kPropertyTypeString),
+                Property("brightness", kPropertyTypeInteger, -1, -1, 8),
+                Property("speed", kPropertyTypeInteger, -1, -1, 10)
+            }),
+            [](const PropertyList& properties) -> ReturnValue {
+                auto scene = properties["scene"].value<std::string>();
+                int brightness = properties["brightness"].value<int>();
+                int speed = properties["speed"].value<int>();
+                LedScene target = LedScene::Relax;
+                if (scene == "off") {
+                    target = LedScene::Off;
+                } else if (scene == "party") {
+                    target = LedScene::Party;
+                } else if (scene == "romantic") {
+                    target = LedScene::Romantic;
+                } else if (scene == "relax") {
+                    target = LedScene::Relax;
+                }
+                if (brightness >= 0) {
+                    led_effects_set_brightness(brightness);
+                }
+                if (speed >= 1) {
+                    led_effects_set_speed(speed);
+                }
+                led_effects_set_scene(target);
+                return true;
+            }
+        );
+
+        mcp_server.AddTool(
+            "self.led_scene.get",
+            "Get current LED scene, brightness and speed.",
+            PropertyList(),
+            [](const PropertyList&) -> ReturnValue {
+                auto scene = led_effects_get_scene();
+                const char* scene_name = "unknown";
+                switch (scene) {
+                    case LedScene::Off:
+                        scene_name = "off";
+                        break;
+                    case LedScene::Party:
+                        scene_name = "party";
+                        break;
+                    case LedScene::Romantic:
+                        scene_name = "romantic";
+                        break;
+                    case LedScene::Relax:
+                        scene_name = "relax";
+                        break;
+                    default:
+                        break;
+                }
+                cJSON* json = cJSON_CreateObject();
+                cJSON_AddStringToObject(json, "scene", scene_name);
+                cJSON_AddNumberToObject(json, "brightness", led_effects_get_brightness());
+                cJSON_AddNumberToObject(json, "speed", led_effects_get_speed());
+                return json;
+            }
+        );
     }
 
 public:
