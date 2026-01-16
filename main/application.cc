@@ -549,12 +549,21 @@ void Application::InitializeProtocol() {
             auto text = cJSON_GetObjectItem(root, "text");
             if (cJSON_IsString(text)) {
                 ESP_LOGI(TAG, ">> %s", text->valuestring);
+                int64_t now_ms = esp_timer_get_time() / 1000;
+                bool allow_scene = (last_mcp_scene_ms_ == 0) ||
+                    (now_ms - last_mcp_scene_ms_ > kMcpSceneHoldMs);
                 auto scene = map_scene_from_text(text->valuestring);
-                ESP_LOGI(TAG, "Scene mapped: %d", static_cast<int>(scene));
-                led_effects_set_scene(scene);
-                Schedule([this, display, message = std::string(text->valuestring), scene]() {
+                if (allow_scene) {
+                    ESP_LOGI(TAG, "Scene mapped: %d", static_cast<int>(scene));
+                    led_effects_set_scene(scene);
+                } else {
+                    ESP_LOGI(TAG, "STT scene ignored due to recent MCP control");
+                }
+                Schedule([display, message = std::string(text->valuestring), scene, allow_scene]() {
                     display->SetChatMessage("user", message.c_str());
-                    display->SetChatMessage("system", scene_name(scene));
+                    if (allow_scene) {
+                        display->SetChatMessage("system", scene_name(scene));
+                    }
                 });
             }
         } else if (strcmp(type->valuestring, "llm") == 0) {
@@ -1015,6 +1024,10 @@ void Application::SendMcpMessage(const std::string& payload) {
             protocol_->SendMcpMessage(payload);
         }
     });
+}
+
+void Application::NotifyMcpSceneControl() {
+    last_mcp_scene_ms_ = esp_timer_get_time() / 1000;
 }
 
 void Application::SetAecMode(AecMode mode) {

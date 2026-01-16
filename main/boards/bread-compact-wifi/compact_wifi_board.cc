@@ -181,6 +181,7 @@ private:
                     led_effects_set_speed(speed);
                 }
                 led_effects_set_scene(target);
+                Application::GetInstance().NotifyMcpSceneControl();
                 return true;
             }
         );
